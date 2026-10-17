@@ -525,7 +525,7 @@ function renderSubmissions() {
             <div>
                 <div class="font-semibold">${escapeHtml(s.title)}</div>
                 <div class="text-sm text-slate-500">${escapeHtml(s.student_name)} ${s.group_name ? '· ' + escapeHtml(s.group_name) : ''}</div>
-                ${s.submitted_at ? `<div class="text-xs text-slate-400">Сдано: ${s.submitted_at}</div>` : ''}
+                ${formatDate(s.submitted_at) ? `<div class="text-xs text-slate-400">Сдано: ${formatDate(s.submitted_at)}</div>` : ''}
             </div>
             <div class="text-right">
                 ${s.status === 'graded' ? `<div class="text-emerald-600 font-bold">${s.grade} / ${s.grade_max}</div>` : `<div class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">На проверке</div>`}
@@ -628,7 +628,7 @@ function renderSubComments(rows) {
         <div class="bg-slate-100 dark:bg-slate-900 rounded-lg p-2">
             <div class="flex justify-between text-xs text-slate-500 mb-1">
                 <span class="font-medium">${escapeHtml(c.author)}</span>
-                <span>${c.created_at}</span>
+                <span>${formatDate(c.created_at)}</span>
             </div>
             <div class="text-sm break-words">${escapeHtml(c.body)}</div>
         </div>

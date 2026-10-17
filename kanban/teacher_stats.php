@@ -195,8 +195,8 @@ if ($teacherId === null) {
                             <span><?= $label ?></span>
                             <span class="text-slate-500"><?= $cnt ?> (<?= $percent ?>%)</span>
                         </div>
-                        <div class="nav-pill nav-pill-export">
-                            <div class="h-full rounded-full transition-all" style="width: <?= $percent ?>%; background: <?= $color ?>"></div>
+                        <div class="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all" style="width: <?= max($percent, 2) ?>%; background: <?= $color ?>"></div>
                         </div>
                     </div>
                 <?php endforeach; ?>

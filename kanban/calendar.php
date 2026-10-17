@@ -61,7 +61,8 @@ foreach ($rows as $r) {
 
 // Строим сетку месяца: первый день недели (1=Пн)
 $startWeekday = (int) date('N', strtotime($firstDay)); // 1..7
-$weekdays = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+$monthNamesRu = [1=>"Янв", 2=>"Фев", 3=>"Мар", 4=>"Апр", 5=>"Май", 6=>"Июн", 7=>"Июл", 8=>"Авг", 9=>"Сен", 10=>"Окт", 11=>"Ноя", 12=>"Дек"];
+$weekdays = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 $monthNames = [
     1 => 'января', 2 => 'февраля', 3 => 'марта', 4 => 'апреля',
     5 => 'мая', 6 => 'июня', 7 => 'июля', 8 => 'августа',
@@ -97,9 +98,9 @@ $monthTitle = $monthNames[$month] . ' ' . $year;
 
     <!-- Навигация по месяцам -->
     <div class="flex items-center justify-between mb-4 bg-white dark:bg-slate-800 rounded-xl px-4 py-3 shadow-sm border border-slate-200 dark:border-slate-700">
-        <a href="?m=<?= $prev ?>" class="nav-pill nav-pill-export">← <?= htmlspecialchars(date('M', strtotime($prev . '-01'))) ?></a>
+        <a href="?m=<?= $prev ?>" class="nav-pill nav-pill-export">← <?= htmlspecialchars($monthNamesRu[(int)date('n', strtotime($prev . '-01'))]) ?></a>
         <div class="text-lg font-semibold"><?= $monthTitle ?></div>
-        <a href="?m=<?= $next ?>" class="nav-pill nav-pill-export"><?= htmlspecialchars(date('M', strtotime($next . '-01'))) ?> →</a>
+        <a href="?m=<?= $next ?>" class="nav-pill nav-pill-export"><?= htmlspecialchars($monthNamesRu[(int)date('n', strtotime($next . '-01'))]) ?> →</a>
     </div>
 
     <!-- Сетка -->
@@ -122,16 +123,16 @@ $monthTitle = $monthNames[$month] . ' ' . $year;
                 $today = date('Y-m-d') === $dateStr ? 'bg-brand-50 dark:bg-brand-900/20' : '';
                 $items = $isCurrentMonth && isset($byDate[$dateStr]) ? $byDate[$dateStr] : [];
             ?>
-                <div class="min-h-[100px] border border-slate-100 dark:border-slate-700 p-1.5 <?= $today ?>">
+                <div class="min-h-[100px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 <?= $today ?>">
                     <?php if ($isCurrentMonth): ?>
                         <div class="text-xs font-semibold <?= date('Y-m-d') === $dateStr ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500' ?> mb-1">
                             <?= $day ?>
                         </div>
                         <?php foreach ($items as $it): ?>
-                            <div class="text-[10px] mb-0.5 px-1 py-0.5 rounded truncate
+                            <div class="cal-event cal-event-status-<?= $it['status'] ?? 'new' ?> text-[10px] mb-0.5 px-1.5 py-0.5 rounded shadow-sm border border-black/5 dark:border-white/10 truncate
                                 <?php
-                                if ($it['status'] === 'graded') echo 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
-                                elseif ($it['status'] === 'submitted') echo 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+                                if ($it['status'] === 'graded') echo 'bg-emerald-100 text-emerald-800 dark:bg-emerald-600 dark:text-white';
+                                elseif ($it['status'] === 'submitted') echo 'bg-amber-100 text-amber-800 dark:bg-amber-600 dark:text-white';
                                 else echo 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300';
                                 ?>"
                                 title="<?= e($it['title']) ?>">

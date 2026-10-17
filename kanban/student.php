@@ -356,7 +356,7 @@ function renderComments(rows) {
         <div class="bg-slate-100 dark:bg-slate-900 rounded-lg p-2">
             <div class="flex justify-between text-xs text-slate-500 mb-1">
                 <span class="font-medium">${escapeHtml(c.author)} <span class="text-[10px] opacity-60">(${c.role})</span></span>
-                <span>${c.created_at}</span>
+                <span>${formatDate(c.created_at)}</span>
             </div>
             <div class="text-sm break-words">${escapeHtml(c.body)}</div>
         </div>

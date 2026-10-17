@@ -93,7 +93,7 @@ $pending = (int)$stmt->fetchColumn();
         <?php else: ?>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
-                    <thead class="nav-pill nav-pill-export">
+                    <thead class="bg-slate-100 dark:bg-slate-900 text-left">
                         <tr>
                             <th class="px-4 py-3">Задание</th>
                             <th class="px-4 py-3">Предмет</th>
@@ -125,7 +125,7 @@ $pending = (int)$stmt->fetchColumn();
                                 <td class="px-4 py-3"><?= e($g['teacher_name']) ?></td>
                                 <td class="px-4 py-3 font-bold <?= $color ?>"><?= $g['grade'] ?> / <?= $g['grade_max'] ?></td>
                                 <td class="px-4 py-3 font-medium <?= $color ?>"><?= $pct ?>%</td>
-                                <td class="px-4 py-3 text-slate-500"><?= e($g['graded_at']) ?></td>
+                                <td class="px-4 py-3 text-slate-500"><?= fmt_date($g['graded_at']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

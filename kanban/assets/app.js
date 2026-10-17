@@ -154,3 +154,42 @@
     // Осторожно: не будем, чтобы не сломать confirm() для удаления.
     // Пусть каждый файл сам вызывает showToast() где надо.
 })();
+
+// =====================================================================
+//  Форматирование дат в JS (аналог fmt_date из PHP)
+// =====================================================================
+(function () {
+    'use strict';
+
+    const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн',
+                    'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+    /**
+     * Форматирует "2026-10-17 06:37:10" → "17 окт, 06:37"
+     * Или "Сегодня, 06:37" / "Вчера, 06:37"
+     */
+    function formatDate(datetime, opts = {}) {
+        if (!datetime) return '—';
+        const d = new Date(datetime.replace(' ', 'T'));
+        if (isNaN(d.getTime())) return datetime;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const diffDays = Math.round((today - target) / 86400000);
+
+        const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+
+        if (diffDays === 0)  return 'Сегодня, ' + time;
+        if (diffDays === 1)  return 'Вчера, ' + time;
+
+        const day = d.getDate();
+        const month = MONTHS[d.getMonth()];
+        if (d.getFullYear() === now.getFullYear()) {
+            return day + ' ' + month + ', ' + time;
+        }
+        return day + ' ' + month + ' ' + d.getFullYear() + ', ' + time;
+    }
+
+    window.formatDate = formatDate;
+})();

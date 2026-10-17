@@ -195,3 +195,34 @@ function ic(string $name, int $size = 16, string $extraClass = ''): string {
     $cls = 'inline-block align-[-0.15em] ' . $extraClass;
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="' . htmlspecialchars($cls) . '" aria-hidden="true">' . $path . '</svg>';
 }
+
+/**
+ * Красивое форматирование даты: "17 окт, 06:37"
+ * Если дата сегодня: "Сегодня, 06:37"
+ * Если вчера: "Вчера, 06:37"
+ */
+function fmt_date(?string $datetime): string {
+    if (!$datetime) return '—';
+    $ts = strtotime($datetime);
+    if (!$ts) return $datetime;
+
+    $months = [
+        1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр',
+        5 => 'май', 6 => 'июн', 7 => 'июл', 8 => 'авг',
+        9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек',
+    ];
+
+    $d = (int)date('j', $ts);
+    $m = $months[(int)date('n', $ts)];
+    $y = (int)date('Y', $ts);
+    $t = date('H:i', $ts);
+
+    $today = date('Y-m-d');
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $dateOnly = date('Y-m-d', $ts);
+
+    if ($dateOnly === $today)     return "Сегодня, $t";
+    if ($dateOnly === $yesterday) return "Вчера, $t";
+    if ($y === (int)date('Y'))    return "$d $m, $t";
+    return "$d $m $y, $t";
+}
