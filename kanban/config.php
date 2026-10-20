@@ -50,7 +50,7 @@ function current_user(): ?array {
     if ($user === null) {
         $stmt = db()->prepare('SELECT id, email, name, role, group_name, theme, blocked FROM users WHERE id = ?');
         $stmt->execute([$_SESSION['user_id']]);
-        $user = $stmt->fetch() ?: null;
+        $user = $stmt->fetch() ?: null; if ($user && empty($user['theme'])) { $user['theme'] = 'dark'; }
         if ($user && (int)$user['blocked'] === 1) {
             session_destroy();
             $user = null;
