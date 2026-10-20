@@ -1307,6 +1307,3 @@ html:not(.dark) .skeleton {
 }
 
 /* Скрываем кнопку переключения темы */
-button[onclick="toggleTheme()"] {
-    display: none !important;
-}
