@@ -499,7 +499,7 @@ async function saveBulkGrades() {
 
         if (!res.ok) { showToast(j.error || 'Ошибка', 'error'); return; }
 
-        showToast(icon('check-circle', 14) + ' Сохранено оценок: ' + j.data.updated, 'success', 2500);
+        showToast('Сохранено оценок: ' + j.data.updated, 'success', 2500);
 
         if (j.errors && j.errors.length) {
             console.warn('Ошибки:', j.errors);
