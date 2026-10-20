@@ -386,7 +386,8 @@ function toggleTheme() {
     const isDark = html.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
     fetch('api.php?action=set_theme', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme: isDark ? 'dark' : 'light' })
     });
 }
