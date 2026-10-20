@@ -2,7 +2,7 @@
 require __DIR__ . '/config.php';
 $user = require_login();
 if ($user['role'] !== 'admin') { header('Location: index.php'); exit; }
-$isDark = $user['theme'] === 'dark';
+$isDark = ($user['theme'] ?? 'dark') === 'dark';
 ?>
 <!DOCTYPE html>
 <html lang="ru" class="<?= $isDark ? 'dark' : '' ?>">
@@ -10,110 +10,8 @@ $isDark = $user['theme'] === 'dark';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Админка</title>
-<script src="https://cdn.tailwindcss.com">
-    // --- Привязка студентов ---
-    let allTeachers = [];
-    let allStudents = [];
-
-    async function loadLinksData() {
-        if (!USERS.length) await loadUsers();
-        allTeachers = USERS.filter(u => u.role === "teacher");
-        allStudents = USERS.filter(u => u.role === "student");
-
-        const tSel = document.getElementById("linkTeacherSelect");
-        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
-            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
-    }
-
-    async function loadLinkStudents() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        const list = document.getElementById("linkStudentsList");
-        list.innerHTML = "";
-        if (!tid) return;
-
-        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
-        const j = await res.json();
-        const linkedIds = (j.data || []).map(s => s.id);
-
-        list.innerHTML = allStudents.map(s => `
-            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
-                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
-            </label>
-        `).join("");
-    }
-
-    async function saveLinks() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        if (!tid) return alert("Выберите преподавателя");
-        
-        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
-        const promises = [];
-        checkboxes.forEach(cb => {
-            const sid = cb.value;
-            const action = cb.checked ? "add" : "remove";
-            promises.push(fetch("api.php?action=admin_link", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
-            }));
-        });
-        await Promise.all(promises);
-        showToast("Привязки сохранены", "success");
-    }
-    
-    </script>
-<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }
-    // --- Привязка студентов ---
-    let allTeachers = [];
-    let allStudents = [];
-
-    async function loadLinksData() {
-        if (!USERS.length) await loadUsers();
-        allTeachers = USERS.filter(u => u.role === "teacher");
-        allStudents = USERS.filter(u => u.role === "student");
-
-        const tSel = document.getElementById("linkTeacherSelect");
-        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
-            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
-    }
-
-    async function loadLinkStudents() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        const list = document.getElementById("linkStudentsList");
-        list.innerHTML = "";
-        if (!tid) return;
-
-        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
-        const j = await res.json();
-        const linkedIds = (j.data || []).map(s => s.id);
-
-        list.innerHTML = allStudents.map(s => `
-            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
-                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
-            </label>
-        `).join("");
-    }
-
-    async function saveLinks() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        if (!tid) return alert("Выберите преподавателя");
-        
-        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
-        const promises = [];
-        checkboxes.forEach(cb => {
-            const sid = cb.value;
-            const action = cb.checked ? "add" : "remove";
-            promises.push(fetch("api.php?action=admin_link", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
-            }));
-        });
-        await Promise.all(promises);
-        showToast("Привязки сохранены", "success");
-    }
-    
-    </script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }</script>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 page-fade-in">
@@ -154,28 +52,19 @@ $isDark = $user['theme'] === 'dark';
 <!-- Вкладки -->
 <div class="max-w-7xl mx-auto px-4 pt-4">
     <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit">
-        <button onclick="setTab('users')" id="tab-users" class="tab-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-0.15em] " aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Пользователи</button>
-        <button onclick="setTab('groups')" id="tab-groups" class="tab-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-0.15em] " aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Группы</button>
+        <button onclick="setTab('users')" id="tab-users" class="tab-btn flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Пользователи
+        </button>
+        <button onclick="setTab('groups')" id="tab-groups" class="tab-btn flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Группы
+        </button>
+        <button onclick="setTab('links')" id="tab-links" class="tab-btn flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Привязка
+        </button>
     </div>
 </div>
 
 <main class="max-w-7xl mx-auto px-4 py-4">
-
-        <!-- Вкладка: Привязка -->
-        <section id="pane-links" class="hidden">
-            <h2 class="text-lg font-semibold mb-4">Привязка студентов к преподавателям</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="card p-4">
-                    <h3 class="font-semibold text-sm mb-2">Выберите преподавателя</h3>
-                    <select id="linkTeacherSelect" class="select w-full" onchange="loadLinkStudents()"></select>
-                </div>
-                <div class="card p-4">
-                    <h3 class="font-semibold text-sm mb-2">Выберите студентов</h3>
-                    <div id="linkStudentsList" class="space-y-2 max-h-60 overflow-y-auto text-sm"></div>
-                    <button onclick="saveLinks()" class="btn btn-primary w-full mt-3">Сохранить привязки</button>
-                </div>
-            </div>
-        </section>
 
     <!-- Вкладка: Пользователи -->
     <section id="pane-users">
@@ -203,6 +92,18 @@ $isDark = $user['theme'] === 'dark';
             <button onclick="openGroupModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium shadow">+ Создать группу</button>
         </div>
         <div id="groupsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- Вкладка: Привязка -->
+    <section id="pane-links" class="hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 max-w-2xl">
+            <h2 class="text-lg font-semibold mb-4">Привязка студентов к преподавателю</h2>
+            <label class="block text-sm font-medium mb-1">Выберите преподавателя</label>
+            <select id="linkTeacherSelect" class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 outline-none mb-4" onchange="loadLinkStudents()"></select>
+            
+            <div id="linkStudentsList" class="space-y-2 max-h-60 overflow-y-auto text-sm mb-4 border-t border-slate-200 dark:border-slate-700 pt-2"></div>
+            <button onclick="saveLinks()" class="btn btn-primary w-full">Сохранить привязки</button>
+        </div>
     </section>
 </main>
 
@@ -239,10 +140,10 @@ $isDark = $user['theme'] === 'dark';
             </div>
         </form>
 
-        <!-- Студенты и преподы (только для редактирования) -->
+        <!-- Студенты и преподы -->
         <div id="groupExtras" class="hidden border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
             <div>
-                <h3 class="font-semibold text-sm mb-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-0.15em] " aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Студенты в группе</h3>
+                <h3 class="font-semibold text-sm mb-2">Студенты в группе</h3>
                 <div id="groupStudents" class="space-y-1 mb-2 text-sm"></div>
                 <div class="flex gap-2">
                     <select id="studentToAdd" class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm outline-none">
@@ -252,7 +153,7 @@ $isDark = $user['theme'] === 'dark';
                 </div>
             </div>
             <div>
-                <h3 class="font-semibold text-sm mb-2"> Преподаватели группы</h3>
+                <h3 class="font-semibold text-sm mb-2">Преподаватели группы</h3>
                 <div id="groupTeachers" class="space-y-1 mb-2 text-sm"></div>
                 <div class="flex gap-2">
                     <select id="teacherToAdd" class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-sm outline-none">
@@ -275,13 +176,14 @@ let CURRENT_GROUP = null;
 // === Вкладки ===
 function setTab(name) {
     document.getElementById('pane-users').classList.toggle('hidden', name !== 'users');
-    document.getElementById('pane-links').classList.toggle('hidden', name !== 'links');
-    if (name === 'links') loadLinksData();
     document.getElementById('pane-groups').classList.toggle('hidden', name !== 'groups');
+    document.getElementById('pane-links').classList.toggle('hidden', name !== 'links');
+    
     ['users','groups','links'].forEach(n => {
         document.getElementById('tab-' + n).classList.toggle('active', n === name);
     });
     if (name === 'groups') loadGroups();
+    if (name === 'links') loadLinksData();
 }
 
 function impersonateGo() {
@@ -357,7 +259,6 @@ async function loadGroups() {
             ${g.curator_name ? `<div class="text-xs text-slate-500 mb-2">Куратор: ${esc(g.curator_name)}</div>` : ''}
             <div class="flex gap-3 text-xs text-slate-500">
                 <span>${icon("users", 14)} ${g.students_cnt} студентов</span>
-                <span> ${g.teachers_cnt} препод.</span>
             </div>
         </div>
     `).join('');
@@ -522,6 +423,51 @@ async function removeTeacher(tid) {
     fillTeacherSelect();
 }
 
+// === Привязка студентов ===
+async function loadLinksData() {
+    if (!USERS.length) await loadUsers();
+
+    const tSel = document.getElementById('linkTeacherSelect');
+    tSel.innerHTML = '<option value="">— выберите преподавателя —</option>' + 
+        ALL_TEACHERS.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+
+async function loadLinkStudents() {
+    const tid = document.getElementById('linkTeacherSelect').value;
+    const list = document.getElementById('linkStudentsList');
+    list.innerHTML = '';
+    if (!tid) return;
+
+    const res = await fetch('api.php?action=teacher_students&teacher_id=' + tid);
+    const j = await res.json();
+    const linkedIds = (j.data || []).map(s => s.id);
+
+    list.innerHTML = ALL_STUDENTS.map(s => `
+        <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+            <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? 'checked' : ''}>
+            ${esc(s.name)} <span class="text-xs text-slate-400">${esc(s.group_name || '')}</span>
+        </label>
+    `).join('');
+}
+
+async function saveLinks() {
+    const tid = document.getElementById('linkTeacherSelect').value;
+    if (!tid) { showToast('Выберите преподавателя', 'warning'); return; }
+    
+    const checkboxes = document.querySelectorAll('#linkStudentsList input[type="checkbox"]');
+    const promises = [];
+    checkboxes.forEach(cb => {
+        const sid = cb.value;
+        const action = cb.checked ? 'add' : 'remove';
+        promises.push(fetch('api.php?action=admin_link', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+        }));
+    });
+    await Promise.all(promises);
+    showToast('Привязки сохранены', 'success');
+}
+
 function esc(s) {
     const d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
@@ -529,161 +475,8 @@ function esc(s) {
 }
 
 loadUsers();
-
-    // --- Привязка студентов ---
-    let allTeachers = [];
-    let allStudents = [];
-
-    async function loadLinksData() {
-        if (!USERS.length) await loadUsers();
-        allTeachers = USERS.filter(u => u.role === "teacher");
-        allStudents = USERS.filter(u => u.role === "student");
-
-        const tSel = document.getElementById("linkTeacherSelect");
-        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
-            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
-    }
-
-    async function loadLinkStudents() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        const list = document.getElementById("linkStudentsList");
-        list.innerHTML = "";
-        if (!tid) return;
-
-        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
-        const j = await res.json();
-        const linkedIds = (j.data || []).map(s => s.id);
-
-        list.innerHTML = allStudents.map(s => `
-            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
-                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
-            </label>
-        `).join("");
-    }
-
-    async function saveLinks() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        if (!tid) return alert("Выберите преподавателя");
-        
-        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
-        const promises = [];
-        checkboxes.forEach(cb => {
-            const sid = cb.value;
-            const action = cb.checked ? "add" : "remove";
-            promises.push(fetch("api.php?action=admin_link", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
-            }));
-        });
-        await Promise.all(promises);
-        showToast("Привязки сохранены", "success");
-    }
-    
-    </script>
-<script src="assets/app.js">
-    // --- Привязка студентов ---
-    let allTeachers = [];
-    let allStudents = [];
-
-    async function loadLinksData() {
-        if (!USERS.length) await loadUsers();
-        allTeachers = USERS.filter(u => u.role === "teacher");
-        allStudents = USERS.filter(u => u.role === "student");
-
-        const tSel = document.getElementById("linkTeacherSelect");
-        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
-            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
-    }
-
-    async function loadLinkStudents() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        const list = document.getElementById("linkStudentsList");
-        list.innerHTML = "";
-        if (!tid) return;
-
-        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
-        const j = await res.json();
-        const linkedIds = (j.data || []).map(s => s.id);
-
-        list.innerHTML = allStudents.map(s => `
-            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
-                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
-            </label>
-        `).join("");
-    }
-
-    async function saveLinks() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        if (!tid) return alert("Выберите преподавателя");
-        
-        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
-        const promises = [];
-        checkboxes.forEach(cb => {
-            const sid = cb.value;
-            const action = cb.checked ? "add" : "remove";
-            promises.push(fetch("api.php?action=admin_link", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
-            }));
-        });
-        await Promise.all(promises);
-        showToast("Привязки сохранены", "success");
-    }
-    
-    </script>
-<script src="assets/icons.js">
-    // --- Привязка студентов ---
-    let allTeachers = [];
-    let allStudents = [];
-
-    async function loadLinksData() {
-        if (!USERS.length) await loadUsers();
-        allTeachers = USERS.filter(u => u.role === "teacher");
-        allStudents = USERS.filter(u => u.role === "student");
-
-        const tSel = document.getElementById("linkTeacherSelect");
-        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
-            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
-    }
-
-    async function loadLinkStudents() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        const list = document.getElementById("linkStudentsList");
-        list.innerHTML = "";
-        if (!tid) return;
-
-        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
-        const j = await res.json();
-        const linkedIds = (j.data || []).map(s => s.id);
-
-        list.innerHTML = allStudents.map(s => `
-            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
-                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
-            </label>
-        `).join("");
-    }
-
-    async function saveLinks() {
-        const tid = document.getElementById("linkTeacherSelect").value;
-        if (!tid) return alert("Выберите преподавателя");
-        
-        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
-        const promises = [];
-        checkboxes.forEach(cb => {
-            const sid = cb.value;
-            const action = cb.checked ? "add" : "remove";
-            promises.push(fetch("api.php?action=admin_link", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
-            }));
-        });
-        await Promise.all(promises);
-        showToast("Привязки сохранены", "success");
-    }
-    
-    </script>
+</script>
+<script src="assets/app.js"></script>
+<script src="assets/icons.js"></script>
 </body>
 </html>
