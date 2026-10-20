@@ -10,8 +10,110 @@ $isDark = $user['theme'] === 'dark';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Админка</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }</script>
+<script src="https://cdn.tailwindcss.com">
+    // --- Привязка студентов ---
+    let allTeachers = [];
+    let allStudents = [];
+
+    async function loadLinksData() {
+        if (!USERS.length) await loadUsers();
+        allTeachers = USERS.filter(u => u.role === "teacher");
+        allStudents = USERS.filter(u => u.role === "student");
+
+        const tSel = document.getElementById("linkTeacherSelect");
+        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
+            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+    }
+
+    async function loadLinkStudents() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        const list = document.getElementById("linkStudentsList");
+        list.innerHTML = "";
+        if (!tid) return;
+
+        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
+        const j = await res.json();
+        const linkedIds = (j.data || []).map(s => s.id);
+
+        list.innerHTML = allStudents.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
+                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
+            </label>
+        `).join("");
+    }
+
+    async function saveLinks() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        if (!tid) return alert("Выберите преподавателя");
+        
+        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
+        const promises = [];
+        checkboxes.forEach(cb => {
+            const sid = cb.value;
+            const action = cb.checked ? "add" : "remove";
+            promises.push(fetch("api.php?action=admin_link", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+            }));
+        });
+        await Promise.all(promises);
+        showToast("Привязки сохранены", "success");
+    }
+    
+    </script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }
+    // --- Привязка студентов ---
+    let allTeachers = [];
+    let allStudents = [];
+
+    async function loadLinksData() {
+        if (!USERS.length) await loadUsers();
+        allTeachers = USERS.filter(u => u.role === "teacher");
+        allStudents = USERS.filter(u => u.role === "student");
+
+        const tSel = document.getElementById("linkTeacherSelect");
+        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
+            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+    }
+
+    async function loadLinkStudents() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        const list = document.getElementById("linkStudentsList");
+        list.innerHTML = "";
+        if (!tid) return;
+
+        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
+        const j = await res.json();
+        const linkedIds = (j.data || []).map(s => s.id);
+
+        list.innerHTML = allStudents.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
+                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
+            </label>
+        `).join("");
+    }
+
+    async function saveLinks() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        if (!tid) return alert("Выберите преподавателя");
+        
+        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
+        const promises = [];
+        checkboxes.forEach(cb => {
+            const sid = cb.value;
+            const action = cb.checked ? "add" : "remove";
+            promises.push(fetch("api.php?action=admin_link", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+            }));
+        });
+        await Promise.all(promises);
+        showToast("Привязки сохранены", "success");
+    }
+    
+    </script>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 page-fade-in">
@@ -58,6 +160,22 @@ $isDark = $user['theme'] === 'dark';
 </div>
 
 <main class="max-w-7xl mx-auto px-4 py-4">
+
+        <!-- Вкладка: Привязка -->
+        <section id="pane-links" class="hidden">
+            <h2 class="text-lg font-semibold mb-4">Привязка студентов к преподавателям</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-4">
+                    <h3 class="font-semibold text-sm mb-2">Выберите преподавателя</h3>
+                    <select id="linkTeacherSelect" class="select w-full" onchange="loadLinkStudents()"></select>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-semibold text-sm mb-2">Выберите студентов</h3>
+                    <div id="linkStudentsList" class="space-y-2 max-h-60 overflow-y-auto text-sm"></div>
+                    <button onclick="saveLinks()" class="btn btn-primary w-full mt-3">Сохранить привязки</button>
+                </div>
+            </div>
+        </section>
 
     <!-- Вкладка: Пользователи -->
     <section id="pane-users">
@@ -157,8 +275,10 @@ let CURRENT_GROUP = null;
 // === Вкладки ===
 function setTab(name) {
     document.getElementById('pane-users').classList.toggle('hidden', name !== 'users');
+    document.getElementById('pane-links').classList.toggle('hidden', name !== 'links');
+    if (name === 'links') loadLinksData();
     document.getElementById('pane-groups').classList.toggle('hidden', name !== 'groups');
-    ['users','groups'].forEach(n => {
+    ['users','groups','links'].forEach(n => {
         document.getElementById('tab-' + n).classList.toggle('active', n === name);
     });
     if (name === 'groups') loadGroups();
@@ -409,8 +529,161 @@ function esc(s) {
 }
 
 loadUsers();
-</script>
-<script src="assets/app.js"></script>
-<script src="assets/icons.js"></script>
+
+    // --- Привязка студентов ---
+    let allTeachers = [];
+    let allStudents = [];
+
+    async function loadLinksData() {
+        if (!USERS.length) await loadUsers();
+        allTeachers = USERS.filter(u => u.role === "teacher");
+        allStudents = USERS.filter(u => u.role === "student");
+
+        const tSel = document.getElementById("linkTeacherSelect");
+        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
+            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+    }
+
+    async function loadLinkStudents() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        const list = document.getElementById("linkStudentsList");
+        list.innerHTML = "";
+        if (!tid) return;
+
+        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
+        const j = await res.json();
+        const linkedIds = (j.data || []).map(s => s.id);
+
+        list.innerHTML = allStudents.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
+                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
+            </label>
+        `).join("");
+    }
+
+    async function saveLinks() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        if (!tid) return alert("Выберите преподавателя");
+        
+        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
+        const promises = [];
+        checkboxes.forEach(cb => {
+            const sid = cb.value;
+            const action = cb.checked ? "add" : "remove";
+            promises.push(fetch("api.php?action=admin_link", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+            }));
+        });
+        await Promise.all(promises);
+        showToast("Привязки сохранены", "success");
+    }
+    
+    </script>
+<script src="assets/app.js">
+    // --- Привязка студентов ---
+    let allTeachers = [];
+    let allStudents = [];
+
+    async function loadLinksData() {
+        if (!USERS.length) await loadUsers();
+        allTeachers = USERS.filter(u => u.role === "teacher");
+        allStudents = USERS.filter(u => u.role === "student");
+
+        const tSel = document.getElementById("linkTeacherSelect");
+        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
+            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+    }
+
+    async function loadLinkStudents() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        const list = document.getElementById("linkStudentsList");
+        list.innerHTML = "";
+        if (!tid) return;
+
+        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
+        const j = await res.json();
+        const linkedIds = (j.data || []).map(s => s.id);
+
+        list.innerHTML = allStudents.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
+                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
+            </label>
+        `).join("");
+    }
+
+    async function saveLinks() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        if (!tid) return alert("Выберите преподавателя");
+        
+        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
+        const promises = [];
+        checkboxes.forEach(cb => {
+            const sid = cb.value;
+            const action = cb.checked ? "add" : "remove";
+            promises.push(fetch("api.php?action=admin_link", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+            }));
+        });
+        await Promise.all(promises);
+        showToast("Привязки сохранены", "success");
+    }
+    
+    </script>
+<script src="assets/icons.js">
+    // --- Привязка студентов ---
+    let allTeachers = [];
+    let allStudents = [];
+
+    async function loadLinksData() {
+        if (!USERS.length) await loadUsers();
+        allTeachers = USERS.filter(u => u.role === "teacher");
+        allStudents = USERS.filter(u => u.role === "student");
+
+        const tSel = document.getElementById("linkTeacherSelect");
+        tSel.innerHTML = "<option value=\"\">— выберите преподавателя —</option>" + 
+            allTeachers.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+    }
+
+    async function loadLinkStudents() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        const list = document.getElementById("linkStudentsList");
+        list.innerHTML = "";
+        if (!tid) return;
+
+        const res = await fetch("api.php?action=teacher_students&teacher_id=" + tid);
+        const j = await res.json();
+        const linkedIds = (j.data || []).map(s => s.id);
+
+        list.innerHTML = allStudents.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                <input type="checkbox" class="raw" value="${s.id}" ${linkedIds.includes(s.id) ? "checked" : ""}>
+                ${escapeHtml(s.name)} <span class="text-xs text-slate-400">${escapeHtml(s.group_name || "")}</span>
+            </label>
+        `).join("");
+    }
+
+    async function saveLinks() {
+        const tid = document.getElementById("linkTeacherSelect").value;
+        if (!tid) return alert("Выберите преподавателя");
+        
+        const checkboxes = document.querySelectorAll("#linkStudentsList input[type=\"checkbox\"]");
+        const promises = [];
+        checkboxes.forEach(cb => {
+            const sid = cb.value;
+            const action = cb.checked ? "add" : "remove";
+            promises.push(fetch("api.php?action=admin_link", {
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ teacher_id: parseInt(tid), student_id: parseInt(sid), action: action })
+            }));
+        });
+        await Promise.all(promises);
+        showToast("Привязки сохранены", "success");
+    }
+    
+    </script>
 </body>
 </html>
