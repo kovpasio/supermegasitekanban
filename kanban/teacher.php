@@ -147,6 +147,19 @@ $teacherSubjects = $stmt->fetchAll();
                 </label>
             </div>
 
+            <!-- Прикрепление файлов -->
+            <div class="mt-3">
+                <label class="block text-sm font-medium mb-1">📎 Файлы к заданию (методички)</label>
+                <label for="createFilesInput" class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <svg class="w-6 h-6 mb-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="text-xs text-slate-500 dark:text-slate-400"><span class="font-semibold text-brand-600 dark:text-brand-400">Нажмите</span>, чтобы выбрать файлы</p>
+                        <p class="text-[10px] text-slate-400 mt-1" id="fileNamesDisplay">Файлы не выбраны</p>
+                    </div>
+                    <input type="file" id="createFilesInput" multiple class="hidden" onchange="document.getElementById('fileNamesDisplay').textContent = this.files.length ? Array.from(this.files).map(f => f.name).join(', ') : 'Файлы не выбраны'">
+                </label>
+            </div>
+
             <!-- Кому выдать -->
             <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
                 <label class="block text-sm font-medium mb-2">Кому выдать</label>
@@ -211,6 +224,16 @@ $teacherSubjects = $stmt->fetchAll();
         <div>
             <h3 class="font-semibold text-sm mb-1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-0.15em] " aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> Файлы студента</h3>
             <div id="subFiles" class="space-y-1 text-sm"></div>
+        </div>
+
+                <!-- Блок файлов преподавателя -->
+        <div class="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+            <h3 class="font-semibold text-sm mb-2">📎 Файлы задания (методички)</h3>
+            <div id="teacherFilesList" class="space-y-1 text-sm mb-2 text-slate-500">Нет файлов</div>
+            <label class="text-xs cursor-pointer text-brand-600 hover:text-brand-800 dark:text-brand-400">
+                + Прикрепить файл
+                <input type="file" class="hidden" onchange="uploadTeacherFile(this)">
+            </label>
         </div>
 
         <div>
@@ -587,7 +610,29 @@ async function createAssignment(e) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (res.ok) { closeCreateModal(); await loadAssignments(); }
+    if (res.ok) {
+    const result = await res.json();
+    const newAssignmentId = result.data.id; // ID только что созданного задания
+
+    // Загружаем выбранные файлы
+    const fileInput = document.getElementById('createFilesInput');
+    if (fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const fd = new FormData();
+            fd.append('owner_type', 'assignment');
+            fd.append('owner_id', newAssignmentId);
+            fd.append('file', fileInput.files[i]);
+            await fetch('upload.php', { method: 'POST', body: fd });
+        }
+        showToast('Задание и файлы успешно созданы!', 'success');
+    } else {
+        showToast('Задание создано', 'success');
+    }
+
+    fileInput.value = ''; // Очищаем поле
+    closeCreateModal();
+    await loadAssignments();
+}
     else { const j = await res.json(); showToast(j.error || 'Ошибка', 'error'); }
 }
 
@@ -689,6 +734,57 @@ document.getElementById('subCommentInput').addEventListener('keydown', e => { if
     await loadAssignments();
     setTab('assignments');
 })();
+// --- Загрузка файлов преподом ---
+window._currentAssignmentId = null;
+const _origOpen = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    window._currentAssignmentId = id;
+    await _origOpen(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch('api.php?action=list_files&owner_type=assignment&owner_id=' + id);
+    const j = await res.json();
+    const list = document.getElementById('teacherFilesList');
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = '<span class="text-xs text-slate-400">Нет файлов</span>';
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join('');
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !window._currentAssignmentId) return;
+    const fd = new FormData();
+    fd.append('owner_type', 'assignment');
+    fd.append('owner_id', window._currentAssignmentId);
+    fd.append('file', input.files[0]);
+    const res = await fetch('upload.php', { method: 'POST', body: fd });
+    if (res.ok) {
+        loadTeacherFiles(window._currentAssignmentId);
+        showToast('Файл загружен', 'success');
+    } else {
+        const j = await res.json();
+        showToast(j.error || 'Ошибка загрузки', 'error');
+    }
+    input.value = '';
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm('Удалить файл?')) return;
+    const res = await fetch('api.php?action=delete_file', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(window._currentAssignmentId);
+}
 </script>
 <!-- Модалка: студенты задания + массовая оценка -->
 <div id="assignmentModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
