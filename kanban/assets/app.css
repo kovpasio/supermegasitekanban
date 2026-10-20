@@ -1305,3 +1305,8 @@ html:not(.dark) .skeleton {
 .dark .cal-event-status-graded {
     background-color: #059669 !important; /* Зелёный для "Оценено" */
 }
+
+/* Скрываем кнопку переключения темы */
+button[onclick="toggleTheme()"] {
+    display: none !important;
+}
