@@ -44,8 +44,112 @@ $teacherSubjects = $stmt->fetchAll();
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Кабинет преподавателя</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }</script>
+<script src="https://cdn.tailwindcss.com">
+// --- Загрузка файлов преподом ---
+let CURRENT_ASSIGNMENT_ID = null;
+const originalOpenAssignmentModal = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    CURRENT_ASSIGNMENT_ID = id;
+    await originalOpenAssignmentModal(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch("api.php?action=list_files&owner_type=assignment&owner_id=" + id);
+    const j = await res.json();
+    const list = document.getElementById("teacherFilesList");
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = "<span class='text-xs text-slate-400'>Нет файлов</span>";
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join("");
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !CURRENT_ASSIGNMENT_ID) return;
+    const fd = new FormData();
+    fd.append("owner_type", "assignment");
+    fd.append("owner_id", CURRENT_ASSIGNMENT_ID);
+    fd.append("file", input.files[0]);
+    const res = await fetch("upload.php", { method: "POST", body: fd });
+    if (res.ok) {
+        loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+        showToast("Файл загружен", "success");
+    } else {
+        showToast("Ошибка загрузки", "error");
+    }
+    input.value = "";
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm("Удалить файл?")) return;
+    const res = await fetch("api.php?action=delete_file", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+}
+
+</script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } } }
+// --- Загрузка файлов преподом ---
+let CURRENT_ASSIGNMENT_ID = null;
+const originalOpenAssignmentModal = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    CURRENT_ASSIGNMENT_ID = id;
+    await originalOpenAssignmentModal(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch("api.php?action=list_files&owner_type=assignment&owner_id=" + id);
+    const j = await res.json();
+    const list = document.getElementById("teacherFilesList");
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = "<span class='text-xs text-slate-400'>Нет файлов</span>";
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join("");
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !CURRENT_ASSIGNMENT_ID) return;
+    const fd = new FormData();
+    fd.append("owner_type", "assignment");
+    fd.append("owner_id", CURRENT_ASSIGNMENT_ID);
+    fd.append("file", input.files[0]);
+    const res = await fetch("upload.php", { method: "POST", body: fd });
+    if (res.ok) {
+        loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+        showToast("Файл загружен", "success");
+    } else {
+        showToast("Ошибка загрузки", "error");
+    }
+    input.value = "";
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm("Удалить файл?")) return;
+    const res = await fetch("api.php?action=delete_file", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+}
+
+</script>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 page-fade-in">
@@ -370,7 +474,16 @@ function renderAssignmentModal() {
             <span class="badge-status badge-status-graded">${icon("check-circle", 14)} Оценено: ${counts.graded}</span>
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+        <div class="mb-4 p-3 border border-slate-200 dark:border-slate-700 rounded-xl">
+    <h3 class="font-semibold text-sm mb-2">📎 Файлы задания (методички)</h3>
+    <div id="teacherFilesList" class="space-y-1 text-sm mb-2 text-slate-500">Нет файлов</div>
+    <label class="text-xs cursor-pointer text-brand-600 hover:text-brand-800 dark:text-brand-400">
+        + Прикрепить файл
+        <input type="file" class="hidden" onchange="uploadTeacherFile(this)">
+    </label>
+</div>
+
+<div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
             <table class="w-full text-sm">
                 <thead class="bg-slate-100 dark:bg-slate-900 text-left">
                     <tr>
@@ -689,6 +802,58 @@ document.getElementById('subCommentInput').addEventListener('keydown', e => { if
     await loadAssignments();
     setTab('assignments');
 })();
+
+// --- Загрузка файлов преподом ---
+let CURRENT_ASSIGNMENT_ID = null;
+const originalOpenAssignmentModal = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    CURRENT_ASSIGNMENT_ID = id;
+    await originalOpenAssignmentModal(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch("api.php?action=list_files&owner_type=assignment&owner_id=" + id);
+    const j = await res.json();
+    const list = document.getElementById("teacherFilesList");
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = "<span class='text-xs text-slate-400'>Нет файлов</span>";
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join("");
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !CURRENT_ASSIGNMENT_ID) return;
+    const fd = new FormData();
+    fd.append("owner_type", "assignment");
+    fd.append("owner_id", CURRENT_ASSIGNMENT_ID);
+    fd.append("file", input.files[0]);
+    const res = await fetch("upload.php", { method: "POST", body: fd });
+    if (res.ok) {
+        loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+        showToast("Файл загружен", "success");
+    } else {
+        showToast("Ошибка загрузки", "error");
+    }
+    input.value = "";
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm("Удалить файл?")) return;
+    const res = await fetch("api.php?action=delete_file", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+}
+
 </script>
 <!-- Модалка: студенты задания + массовая оценка -->
 <div id="assignmentModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -711,7 +876,111 @@ document.getElementById('subCommentInput').addEventListener('keydown', e => { if
         </div>
     </div>
 </div>
-<script src="assets/app.js"></script>
-<script src="assets/icons.js"></script>
+<script src="assets/app.js">
+// --- Загрузка файлов преподом ---
+let CURRENT_ASSIGNMENT_ID = null;
+const originalOpenAssignmentModal = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    CURRENT_ASSIGNMENT_ID = id;
+    await originalOpenAssignmentModal(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch("api.php?action=list_files&owner_type=assignment&owner_id=" + id);
+    const j = await res.json();
+    const list = document.getElementById("teacherFilesList");
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = "<span class='text-xs text-slate-400'>Нет файлов</span>";
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join("");
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !CURRENT_ASSIGNMENT_ID) return;
+    const fd = new FormData();
+    fd.append("owner_type", "assignment");
+    fd.append("owner_id", CURRENT_ASSIGNMENT_ID);
+    fd.append("file", input.files[0]);
+    const res = await fetch("upload.php", { method: "POST", body: fd });
+    if (res.ok) {
+        loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+        showToast("Файл загружен", "success");
+    } else {
+        showToast("Ошибка загрузки", "error");
+    }
+    input.value = "";
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm("Удалить файл?")) return;
+    const res = await fetch("api.php?action=delete_file", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+}
+
+</script>
+<script src="assets/icons.js">
+// --- Загрузка файлов преподом ---
+let CURRENT_ASSIGNMENT_ID = null;
+const originalOpenAssignmentModal = window.openAssignmentModal;
+window.openAssignmentModal = async function(id) {
+    CURRENT_ASSIGNMENT_ID = id;
+    await originalOpenAssignmentModal(id);
+    loadTeacherFiles(id);
+};
+
+async function loadTeacherFiles(id) {
+    const res = await fetch("api.php?action=list_files&owner_type=assignment&owner_id=" + id);
+    const j = await res.json();
+    const list = document.getElementById("teacherFilesList");
+    if (!list) return;
+    if (!j.data || !j.data.length) {
+        list.innerHTML = "<span class='text-xs text-slate-400'>Нет файлов</span>";
+        return;
+    }
+    list.innerHTML = j.data.map(f => `
+        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 mb-1">
+            <a href="${f.url}" target="_blank" class="text-brand-600 hover:underline truncate">${f.filename}</a>
+            <button onclick="deleteTeacherFile(${f.id})" class="text-red-500 text-xs">✕</button>
+        </div>
+    `).join("");
+}
+
+async function uploadTeacherFile(input) {
+    if (!input.files[0] || !CURRENT_ASSIGNMENT_ID) return;
+    const fd = new FormData();
+    fd.append("owner_type", "assignment");
+    fd.append("owner_id", CURRENT_ASSIGNMENT_ID);
+    fd.append("file", input.files[0]);
+    const res = await fetch("upload.php", { method: "POST", body: fd });
+    if (res.ok) {
+        loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+        showToast("Файл загружен", "success");
+    } else {
+        showToast("Ошибка загрузки", "error");
+    }
+    input.value = "";
+}
+
+async function deleteTeacherFile(fileId) {
+    if (!confirm("Удалить файл?")) return;
+    const res = await fetch("api.php?action=delete_file", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id: fileId })
+    });
+    if (res.ok) loadTeacherFiles(CURRENT_ASSIGNMENT_ID);
+}
+
+</script>
 </body>
 </html>
