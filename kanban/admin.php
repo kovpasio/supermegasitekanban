@@ -213,9 +213,12 @@ async function loadUsers() {
                 </select>
             </td>
             <td class="px-4 py-2">${u.blocked == 1 ? `<span class="text-red-500">${icon("x-circle", 14)} Заблокирован</span>` : `<span class="text-emerald-500">${icon("check-circle", 14)} Активен</span>`}</td>
-            <td class="px-4 py-2">
-                <button onclick="toggleBlock(${u.id}, ${u.blocked == 1 ? 0 : 1})" class="px-2 py-1 rounded text-xs ${u.blocked == 1 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}">
+            <td class="px-4 py-2 flex gap-1">
+                <button onclick="toggleBlock(${u.id}, ${u.blocked == 1 ? 0 : 1})" class="px-2 py-1 rounded text-xs ${u.blocked == 1 ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}">
                     ${u.blocked == 1 ? 'Разблок.' : 'Блок.'}
+                </button>
+                <button onclick="deleteUser(${u.id})" class="px-2 py-1 rounded text-xs bg-red-500 text-white" title="Удалить пользователя">
+                    ${icon("trash", 14)}
                 </button>
             </td>
         </tr>
@@ -237,6 +240,21 @@ async function toggleBlock(id, blocked) {
         body: JSON.stringify({id, blocked})
     });
     loadUsers();
+}
+
+async function deleteUser(id) {
+    if (!confirm('Удалить пользователя? Все его задания и сдачи будут удалены навсегда!')) return;
+    const res = await fetch('api.php?action=admin_delete_user', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({id})
+    });
+    if (res.ok) {
+        showToast('Пользователь удален', 'success');
+        loadUsers();
+    } else {
+        const j = await res.json();
+        alert(j.error || 'Ошибка удаления');
+    }
 }
 
 // === Группы ===
